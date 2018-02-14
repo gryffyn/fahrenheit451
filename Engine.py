@@ -17,6 +17,8 @@ TILEWIDTH = 128
 TILEHEIGHT = 64
 FLOORPATH = os.path.join("graphics", "floor_tiles")
 FONT = pygame.font.Font("Lumidify_Casual.ttf", 50)
+FONT_SMALL = pygame.font.Font("SourceCodePro.ttf", 14)
+clock = pygame.time.Clock()
 
 def load_module(path):
     spec = importlib.util.spec_from_file_location("module.name", path)
@@ -29,7 +31,7 @@ class Engine():
         print("Initializing Lumidify Isometric Engine (LIE) Version 1.0 ...")
         self.screen = screen
         self.screen.blit(FONT.render("Loading...", True, (255, 255, 255)), (0, 0))
-        self.screen.blit(FONT.render("Patience is a virtue.", True, (255, 255, 255)), (0, 40))
+        self.screen.blit(FONT.render("Remember - patience is a virtue.", True, (255, 255, 255)), (0, 40))
         pygame.display.update()
         self.tiles, self.obstacles, self.characters, self.items, self.bullets = load_tiles()
         self.floor = Floor(self.screen, self.tiles)
@@ -46,6 +48,7 @@ class Engine():
         self.current_map = ""
         self.wongame = False
         self.lostgame = False
+        self.show_fps = True
     def savegame(self):
         if not os.path.isdir("save"):
             os.mkdir("save")
@@ -68,6 +71,8 @@ class Engine():
             f.write("player_config = " + repr(player_config))
     def load_game(self):
         if os.path.isdir("save"):
+            self.wongame = False
+            self.lostgame = False
             player_config = load_module(os.path.join("save", "config.py")).player_config.copy()
             self.player.reset()
             self.player.dead = player_config["dead"]
@@ -75,7 +80,8 @@ class Engine():
             self.saved_maps = os.listdir("save")
             self.current_map = player_config["current_map"]
             self.player.health = player_config["health"]
-            self.saved_maps = os.listdir("save")
+            self.saved_maps = [os.path.join("maps", x) for x in os.listdir("save/maps")]
+            self.loaded_maps = {}
             self.load_map(self.current_map, spawn_pos=player_config["grid_pos"])
             if player_config["won"]:
                 self.wingame()
@@ -85,6 +91,7 @@ class Engine():
         if path in self.saved_maps:
             self.saved_maps.remove(path)
             path = os.path.join("save", path)
+            self.current_map = None
         if self.current_map:
             self.loaded_maps[self.current_map] = {}
             self.loaded_maps[self.current_map]["floor"] = self.floor.layers.copy()
@@ -118,7 +125,7 @@ class Engine():
             self.obstacles.bullets = []
             self.config = load_module(os.path.join(path, "config.py")).config.copy()
         try:
-            pygame.mixer.music.load(self.config.get("music", "Search_Art_S31_Undercover_Operative_0.ogg"))
+            pygame.mixer.music.load(self.config.get("music", "Betrayed.ogg"))
             pygame.mixer.music.play(-1)
         except:
             pass
@@ -145,6 +152,8 @@ class Engine():
                 self.savegame()
             elif event.key == K_F4:
                 self.load_game()
+            elif event.key == K_F11:
+                self.show_fps = not self.show_fps
     def wingame(self):
         self.wongame = True
         pygame.mixer.music.load("wingame.ogg")
@@ -161,6 +170,8 @@ class Engine():
         elif self.lostgame:
             screen.blit(FONT.render("Shame be upon you! You lost!", True, (255, 255, 255)), (0, 0))
         self.screen.blit(FONT.render("Health: " + str(self.player.health), True, (255, 255, 255)), (self.screen.get_size()[0] - 200, 0))
+        if self.show_fps:
+            self.screen.blit(FONT.render("FPS: " + str(round(clock.get_fps(), 2)), True, (255, 255, 255)), (self.screen.get_size()[0] - 400, 0))
 if __name__ == "__main__":
     pygame.init()
     screen_info = pygame.display.Info()
@@ -172,10 +183,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         engine.load_map(sys.argv[1])
     else:
-        engine.load_map("TheMap")
+        engine.load_map("maps/MapBook1")
     while True:
         screen.fill((0, 0, 0))
-        clock.tick(60)
+        clock.tick()
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()

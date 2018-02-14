@@ -1,0 +1,1 @@
+items = [{'y': 27.125, 'onpickup': ['REPLACE', 'obstacle', 'teleport_door', '6'], 'x': 26.8125, 'type': 'The Super Exterminator!!!'}]

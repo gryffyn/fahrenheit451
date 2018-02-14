@@ -1,1 +1,1 @@
-triggers = []
+triggers = [{'y': 1.25, 'trigger': ['TRYCHANGEMAP', 'maps/MapBook2', 'Book 1', '2', '3'], 'height': 0.5, 'width': 0.5, 'deactivate_after_use': True, 'x': 48.25}, {'y': 37.3125, 'width': 1.0, 'trigger': ['TRYWINGAME'], 'x': 17.96875, 'height': 5.0}]

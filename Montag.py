@@ -4,6 +4,7 @@ import math
 import pygame
 from Engine import *
 from pygame.locals import *
+from call_trigger import *
 from Character import *
 
 TILEWIDTH = 128
@@ -84,9 +85,15 @@ class Montag(Character):
                 self.obstaclemap.add_item(temp)
             self.inventory["weapon"] = item.item_info
             self.attack_time = item.item_info["weapon"]["attack_time"] * 1000
+        elif item.item_info["type"] == "Health Pill":
+            self.health += 15
+            if self.health > 100:
+                self.health = 100
         else:
             self.inventory["books"].append(item.item_info)
         self.obstaclemap.delete_item(item)
+        if item.onpickup:
+            call_trigger(item.onpickup, self.obstaclemap, self.identifier, self)
     def attack(self, character=None):
         self.walk_to_points = []
         weapon = self.inventory["weapon"]
@@ -130,7 +137,6 @@ class Montag(Character):
             if self.pressed and mouse_pos != self.last_mouse_pos and self.state != "attack":
                 self.after_walk = None
                 self.last_mouse_pos = mouse_pos
-                mouse_pos = [mouse_pos[0] - TILEWIDTH // 2, mouse_pos[1]]
                 x = ((mouse_pos[0] / (TILEWIDTH // 2)) + (mouse_pos[1] / (TILEHEIGHT // 2))) / 2
                 y = (((mouse_pos[0] / (TILEWIDTH // 2)) - mouse_pos[1] / (TILEHEIGHT // 2))) / -2
                 self.marker_pos = (x, y)
@@ -147,7 +153,7 @@ class Montag(Character):
     def draw(self, screen_offset):
         self.last_screen_offset = screen_offset
         if not self.dead and self.walk_to_points:
-            isox = (self.marker_pos[0] - self.marker_pos[1]) * (TILEWIDTH // 2) + 49
-            isoy = (self.marker_pos[0] + self.marker_pos[1]) * (TILEHEIGHT // 2) - 7
+            isox = (self.marker_pos[0] - self.marker_pos[1]) * (TILEWIDTH // 2) - 16
+            isoy = (self.marker_pos[0] + self.marker_pos[1]) * (TILEHEIGHT // 2) - 8
             self.screen.blit(self.target_image, (isox + screen_offset[0], isoy + screen_offset[1]))
         super().draw(screen_offset)

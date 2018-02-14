@@ -64,8 +64,8 @@ class Bullet():
                 self.frame = 0
         self.current_time = current_time
     def draw(self, screen_offset):
-        isox = ((self.grid_pos[0] - 0.2) - (self.grid_pos[1] - 0.2)) * (ISOWIDTH // 2) + (self.images[self.direction][self.frame]["offset"][0] + TILEWIDTH // 2 + screen_offset[0])
-        isoy = ((self.grid_pos[0] - 0.2) + (self.grid_pos[1] - 0.2)) * (ISOHEIGHT // 2) + (self.images[self.direction][self.frame]["offset"][1] + screen_offset[1])
+        isox = ((self.grid_pos[0] - 0.2) - (self.grid_pos[1] - 0.2)) * (ISOWIDTH // 2) + (self.images[self.direction][self.frame]["offset"][0] + screen_offset[0])
+        isoy = ((self.grid_pos[0] - 0.2) + (self.grid_pos[1] - 0.2)) * (ISOHEIGHT // 2) + (self.images[self.direction][self.frame]["offset"][1] + TILEHEIGHT // 2 + screen_offset[1])
         self.screen.blit(self.images[self.direction][self.frame]["image"], (isox, isoy))
 def calculate_rect(grid_pos, borders):
     return Rect((
@@ -91,6 +91,8 @@ class Trigger():
             temp.update({"deactivate_after_use": self.deactivate_after_use})
         if not self.active:
             temp.update({"active": self.active})
+        if self.identifier:
+            temp.update({"id": self.identifier})
         return temp
     def get_rect(self, rect_type):
         if rect_type == "rect":
@@ -103,13 +105,15 @@ class Trigger():
 class BasicObstacle():
     def __init__(self, grid_pos, width, height, obstype, **kwargs):
         self.grid_pos = grid_pos
+        self.width = width
+        self.height = height
         self.type = obstype
         self.rect = Rect(grid_pos[0] * WIDTH, grid_pos[1] * HEIGHT, width * WIDTH, height * HEIGHT)
         self.realrect = Rect(0, 0, 0, 0)
         self.identifier = kwargs.get("id", None)
         self.selectable = False
     def get_dict(self):
-        temp = {"x": self.x, "y": self.y, "width": self.width, "height": self.height, "type": self.type}
+        temp = {"x": self.grid_pos[0], "y": self.grid_pos[1], "width": self.width, "height": self.height, "type": self.type}
         if self.identifier:
             temp.update({"id": self.identifier})
         return temp
@@ -125,6 +129,8 @@ class BasicObstacle():
 class Obstacle(Tile):
     def __init__(self, screen, tile_dict, grid_pos, **kwargs):
         super().__init__(screen, tile_dict, grid_pos)
+        self.isox = (self.grid_pos[0] - self.grid_pos[1]) * (TILEWIDTH // 2) + self.offset[0]
+        self.isoy = (self.grid_pos[0] + self.grid_pos[1]) * (TILEHEIGHT // 2) + self.offset[1]
         self.borders = kwargs.get("borders", [0, 0, 0, 0])
         self.rect = calculate_rect(grid_pos, self.borders)
         self.type = kwargs.get("type", None)
@@ -140,7 +146,7 @@ class Obstacle(Tile):
         self.items = kwargs.get("items", [])
         self.selected = False
         self.selectable = False
-        if self.action or self.dialog or self.onclick or self.label:
+        if self.action or self.dialog or self.onclick or self.label or self.items:
             self.selectable = True
     def get_dict(self):
         temp = {"type": self.type, "x": self.grid_pos[0], "y": self.grid_pos[1], "id": self.identifier, "onclick": self.onclick, "action": self.action, "after_looting": self.after_looting, "label": self.label, "items": self.items}
@@ -156,7 +162,7 @@ class Obstacle(Tile):
             self.dialogmanager.start_dialog(self.dialog)
         if self.action == "chest":
             for item in self.items:
-                self.obstaclemap.add_item({"x": self.grid_pos[0] + 0.5, "y": self.grid_pos[1], "type": item})
+                self.obstaclemap.add_item({"x": self.grid_pos[0] + self.rect.width / WIDTH / 2 + 0.1, "y": self.grid_pos[1], "type": item})
             self.items = []
             if self.after_looting:
                 self.obstaclemap.replace_obs(obstacle=self, new=self.after_looting)
@@ -187,6 +193,11 @@ class Obstacle(Tile):
 class AnimatedObstacle(AnimatedTile):
     def __init__(self, screen, tile_dict, grid_pos, **kwargs):
         super().__init__(screen, tile_dict, grid_pos)
+        self.iso_positions = []
+        for offset in self.offsets:
+            isox = (self.grid_pos[0] - self.grid_pos[1]) * (TILEWIDTH // 2) + offset[0]
+            isoy = (self.grid_pos[0] + self.grid_pos[1]) * (TILEHEIGHT // 2) + offset[1]
+            self.iso_positions.append([isox, isoy])
         self.borders = kwargs.get("borders", [0, 0, 0, 0])
         self.type = kwargs.get("type", None)
         self.rect = calculate_rect(grid_pos, self.borders)
@@ -202,7 +213,7 @@ class AnimatedObstacle(AnimatedTile):
         self.selected = False
         self.selectable = False
         self.items = kwargs.get("items", [])
-        if self.action or self.dialog or self.onclick or self.label:
+        if self.action or self.dialog or self.onclick or self.label or self.items:
             self.selectable = True
     def get_dict(self):
         temp = {"type": self.type, "x": self.grid_pos[0], "y": self.grid_pos[1], "id": self.identifier, "onclick": self.onclick, "action": self.action, "after_looting": self.after_looting, "label": self.label, "items": self.items}
@@ -222,7 +233,7 @@ class AnimatedObstacle(AnimatedTile):
             self.dialogmap.start_dialog(self.dialog)
         if self.action == "chest":
             for item in self.items:
-                self.obstaclemap.add_item({"x": self.grid_pos[0] + 0.5, "y": self.grid_pos[1], "type": item})
+                self.obstaclemap.add_item({"x": self.grid_pos[0] + self.rect.width / WIDTH / 2 + 0.1, "y": self.grid_pos[1], "type": item})
             self.obstaclemap.replace_obs(obstacle=self, new=self.after_looting)
         if self.action == "barrel":
             for item in self.items:
@@ -283,7 +294,8 @@ class Item():
         self.item_info = kwargs["item_info"]
         self.label = kwargs.get("label", None)
         self.identifier = kwargs.get("id", None)
-        self.isox = (self.grid_pos[0] - self.grid_pos[1]) * (TILEWIDTH // 2) + (self.offset[0] + TILEWIDTH // 2)
+        self.onpickup = kwargs.get("onpickup", None)
+        self.isox = (self.grid_pos[0] - self.grid_pos[1]) * (TILEWIDTH // 2) + self.offset[0]
         self.isoy = (self.grid_pos[0] + self.grid_pos[1]) * (TILEHEIGHT // 2) + self.offset[1]
         self.realrect = Rect((self.isox, self.isoy), self.image.get_size())
         self.selected = False
@@ -367,6 +379,13 @@ class Obstacles():
             pass
     def changemap(self, new_map, spawn_pos=None):
         self.engine.load_map(new_map, spawn_pos=spawn_pos)
+    def trychangemap(self, new_map, book, spawn_pos=None):
+        try:
+            spawn_pos = [float(x) for x in spawn_pos]
+        except:
+            pass
+        if self.player.has_book(book):
+            self.engine.load_map(new_map, spawn_pos=spawn_pos)
     def add_bullet(self, info):
         temp = self.bullet_archetypes[info["name"]].copy()
         temp.update(info)

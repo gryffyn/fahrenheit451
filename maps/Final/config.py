@@ -1,0 +1,1 @@
+config = {'spawn_pos': [2.0, 1.0], 'music': 'Scifi.ogg', 'level_dimensions': [10, 10]}

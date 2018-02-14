@@ -119,7 +119,7 @@ class BasicObstacle():
         self.width = kwargs.get("width", 1)
         self.height = kwargs.get("height", 1)
         self.type = kwargs.get("type", "RECT")
-        self.identifier = kwargs.get("identifier", None)
+        self.identifier = kwargs.get("id", None)
         self.selected = False
         self.generate_points()
     def set_values(self, **kwargs):
@@ -127,7 +127,7 @@ class BasicObstacle():
         self.y = kwargs.get("y", self.y)
         self.width = kwargs.get("width", self.width)
         self.height = kwargs.get("height", self.height)
-        self.identifier = kwargs.get("identifier", self.identifier)
+        self.identifier = kwargs.get("id", self.identifier)
         self.generate_points()
     def select(self):
         self.selected = True
@@ -178,11 +178,14 @@ class Trigger(BasicObstacle):
             temp.update({"deactivate_after_use": self.deactivate_after_use})
         if not self.active:
             temp.update({"active": self.active})
+        if self.identifier:
+            temp.update({"id": self.identifier})
         return temp
 class Obstacle():
     def __init__(self, screen, **kwargs):
         self.screen = screen
         self.type = kwargs.get("type", None)
+        self.orig_info = kwargs.get("orig_info", {})
         self.image = kwargs["images"]["image"]
         self.region = kwargs["images"]["region"]
         self.offset = kwargs["images"]["offset"]
@@ -199,6 +202,7 @@ class Obstacle():
         self.y = kwargs.get("y", 0)
         self.set_values()
     def set_values(self, **kwargs):
+        self.orig_info = kwargs.get("orig_info", self.orig_info)
         self.identifier = kwargs.get("identifier", self.identifier)
         self.onclick = kwargs.get("onclick", self.onclick)
         self.action = kwargs.get("action", self.action)
@@ -210,13 +214,13 @@ class Obstacle():
         self.items = kwargs.get("items", self.items)
         self.rect = calculate_rect((self.x, self.y), self.borders)
         self.isox = (self.x - self.y) * (TILEWIDTH // 2) + self.offset[0]
-        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.offset[1] + TILEHEIGHT // 2
+        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.offset[1]
         self.realrect = Rect((self.isox, self.isoy), self.region[1])
     def get_dict(self):
         temp = {"type": self.type, "x": self.x, "y": self.y, "id": self.identifier, "onclick": self.onclick, "action": self.action, "animation": self.animation, "after_looting": self.after_looting, "label": self.label, "items": self.items}
         final = {}
         for key, item in temp.items():
-            if item is not None and item != [""] and item != "" and item != []:
+            if item != self.orig_info.get(key, None):
                 final[key] = item
         return final
     def get_rect(self, rect_type):
@@ -248,15 +252,17 @@ class Item():
         self.y = kwargs.get("y", 0)
         self.identifier = kwargs.get("id", None)
         self.label = kwargs.get("label", None)
+        self.onpickup = kwargs.get("onpickup", None)
         self.set_values()
     def set_values(self, **kwargs):
         self.x = kwargs.get("x", self.x)
         self.y = kwargs.get("y", self.y)
         self.isox = (self.x - self.y) * (TILEWIDTH // 2) + self.offset[0]
-        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.offset[1] + TILEHEIGHT // 2
+        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.offset[1]
         self.realrect = Rect((self.isox, self.isoy), self.image.get_size())
         self.identifier = kwargs.get("identifier", self.identifier)
         self.label = kwargs.get("label", self.label)
+        self.onpickup = kwargs.get("onpickup", self.onpickup)
     def select(self):
         self.selected = True
     def deselect(self):
@@ -266,10 +272,12 @@ class Item():
             return self.realrect
     def get_dict(self):
         temp = {"type": self.type, "x": self.x, "y": self.y}
-        if self.identifier is not None:
+        if self.identifier:
             temp["id"] = self.identifier
         if self.label != self.item_info.get("label", None):
             temp["label"] = self.label
+        if self.onpickup:
+            temp["onpickup"] = self.onpickup
         return temp
     def draw(self, screen_offset):
         if self.selected:
@@ -321,7 +329,7 @@ class Character():
         else:
             self.tile_dict = self.images[self.direction][self.state][self.frame]
         self.isox = (self.x - self.y) * (TILEWIDTH // 2) + self.tile_dict["offset"][0]
-        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.tile_dict["offset"][1] + TILEHEIGHT // 2
+        self.isoy = (self.x + self.y) * (TILEHEIGHT // 2) + self.tile_dict["offset"][1]
         self.realrect = Rect((self.isox, self.isoy), self.tile_dict["size"])
         self.calculate_points()
     def calculate_points(self):
@@ -488,6 +496,7 @@ class Obstacles():
                 tile_dict["images"] = tile_dict["images"][0]
             complete_info = tile_dict.copy()
             complete_info.update(info)
+            complete_info.update({"orig_info": self.obstacles[int(info["type"])]})
             return Obstacle(self.screen, **complete_info)
     def spawn_character(self, **kwargs):
         if kwargs.get("info", None):
@@ -496,6 +505,7 @@ class Obstacles():
             self.charactermap.append(Character(self.screen, x=kwargs.get("x", 0), y=kwargs.get("y", 0), name=kwargs["name"]))
     def load_obstaclemap(self, path):
         self.layers = []
+        self.rect_obstacles = []
         temp = load_module(path)
         for layer in temp.layers:
             self.layers.append([])
@@ -586,7 +596,7 @@ class Obstacles():
             elif obs_type == Character:
                 possible_options = ["x", "y", "dead", "weapon", "label", "identifier", "aggression_distance", "direction", "health", "random_walk_area", "waypoints", "ondeath"]
             elif obs_type == Item:
-                possible_options = ["x", "y", "label", "identifier"]
+                possible_options = ["x", "y", "label", "identifier", "onpickup"]
             self.properties_frame = ttk.Frame(parent)
             self.widgets = {}
             for index, option in enumerate(possible_options):
@@ -615,8 +625,8 @@ class Obstacles():
                     variable.set(int(getattr(self.selected, option)))
                     self.widgets[option] = {"widget": ttk.Checkbutton(self.properties_frame, text=option, variable=variable), "variable": variable}
                     self.widgets[option]["widget"].grid(row=index, column=1, sticky="w")
-                elif option in ["onclick", "trigger", "ondeath"]:
-                    self.widgets[option] = [ttk.Combobox(self.properties_frame, values=("REPLACE", "DELETE", "ADD", "KILL", "KILLALL", "SPAWN", "OPEN", "CLOSE", "DEACTIVATE", "ACTIVATE", "WINGAME", "TRYWINGAME", "CHANGEMAP")), ttk.Combobox(self.properties_frame, values=("obstacle", "character", "item", "trigger")), ttk.Entry(self.properties_frame), ttk.Entry(self.properties_frame), ttk.Entry(self.properties_frame)]
+                elif option in ["onclick", "trigger", "ondeath", "onpickup"]:
+                    self.widgets[option] = [ttk.Combobox(self.properties_frame, values=("REPLACE", "DELETE", "ADD", "KILL", "KILLALL", "SPAWN", "OPEN", "CLOSE", "DEACTIVATE", "ACTIVATE", "WINGAME", "TRYWINGAME", "CHANGEMAP", "TRYCHANGEMAP")), ttk.Combobox(self.properties_frame, values=("obstacle", "character", "item", "trigger")), ttk.Entry(self.properties_frame), ttk.Entry(self.properties_frame), ttk.Entry(self.properties_frame)]
                     for widget_index, widget in enumerate(self.widgets[option]):
                         try:
                             if type(widget) == ttk.Combobox:
@@ -678,11 +688,11 @@ class Obstacles():
                         try:
                             if key in ["after_looting", "health"]:
                                 value = int(value)
-                            else:
+                            elif key in ["x", "y", "width", "height"]:
                                 value = float(value)
                         except:
                             pass
-                    if key in ["x", "y", "width", "height"]:
+                    if key in ["x", "y", "width", "height", "aggression_distance"]:
                         try:
                             final_dict[key] = float(value)
                         except:

@@ -509,7 +509,7 @@ portrait_path=999
 speed=0.25
 class=9
 drop_item_class=9
-health=300
+health=200
 heal_rate=15
 experience_reward=2000
 aggression_distance=16.116
@@ -567,7 +567,7 @@ description=Some people say that every doctor is addicted to drugs. You estimate
 
 ** Start of new Robot: ** 
 droidname=GUA
-label=Red Guard
+label=Fireman
 portrait_path=NONE_AVAILABLE_YET
 speed=0.25
 class=18

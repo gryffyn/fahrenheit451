@@ -19,7 +19,7 @@ def call_trigger(trigger, obstaclemap, identifier, obstacle):
         if trigger[1] == "obstacle":
             obstaclemap.add_obstacle(info=trigger[2])
         elif trigger[1] == "item":
-            obstaclemap.add_item(info=trigger[2])
+            obstaclemap.add_item({"type": trigger[2], "x": obstacle.grid_pos[0], "y": obstacle.grid_pos[1]})
     elif trigger[0] == "KILLALL":
         obstaclemap.killall()
     elif trigger[0] == "SPAWN":
@@ -36,15 +36,20 @@ def call_trigger(trigger, obstaclemap, identifier, obstacle):
             obstaclemap.close_door(trigger[2])
     elif trigger[0] == "DEACTIVATE":
         if trigger[1] == "trigger":
-            obstaclemap.deactivate_trigger(identifier)
+            obstaclemap.deactivate_trigger(trigger[2])
     elif trigger[0] == "ACTIVATE":
         if trigger[1] == "trigger":
-            obstaclemap.activate_trigger(identifier)
+            obstaclemap.activate_trigger(trigger[2])
     elif trigger[0] == "CHANGEMAP":
         if len(trigger) > 2:
             obstaclemap.changemap(trigger[1], [trigger[2], trigger[3]])
         else:
             obstaclemap.changemap(trigger[1])
+    elif trigger[0] == "TRYCHANGEMAP":
+        if len(trigger) > 3:
+            obstaclemap.trychangemap(trigger[1], trigger[2], [trigger[3], trigger[4]])
+        else:
+            obstaclemap.trychangemap(trigger[1], trigger[2])
     elif trigger[0] == "KILL":
         if trigger[1] == "character":
             obstaclemap.kill(trigger[2])
